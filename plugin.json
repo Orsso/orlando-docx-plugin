@@ -1,0 +1,46 @@
+{
+  "name": "docx-converter",
+  "version": "1.0.0",
+  "display_name": "DOCX Converter",
+  "description": "Convert Microsoft Word documents to DITA",
+  "author": "Orlando Toolkit Team",
+  "homepage": "https://github.com/organization/orlando-docx-plugin",
+  
+  "orlando_version": ">=2.0.0",
+  "plugin_api_version": "1.0",
+  "category": "pipeline",
+  
+  "entry_point": "src.plugin.DocxConverterPlugin",
+  
+  "supported_formats": [
+    {
+      "extension": ".docx",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "description": "Microsoft Word Document"
+    }
+  ],
+  
+  "dependencies": {
+    "python": ">=3.8",
+    "packages": [
+      "python-docx>=0.8.11",
+      "lxml>=4.6.0",
+      "Pillow>=8.0.0",
+      "requests>=2.25.0"
+    ]
+  },
+  
+  "provides": {
+    "services": ["DocumentHandler"],
+    "ui_extensions": ["HeadingFilterPanel"],
+    "marker_providers": ["StyleMarkerProvider"]
+  },
+  
+  "ui": {
+    "splash_button": {
+      "text": "Import from\nDOCX",
+      "icon": "docx-icon.png",
+      "tooltip": "Convert Microsoft Word documents to DITA"
+    }
+  }
+}

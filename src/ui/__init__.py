@@ -1,0 +1,1 @@
+"""DOCX plugin UI components."""
