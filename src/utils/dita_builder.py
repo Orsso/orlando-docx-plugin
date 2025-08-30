@@ -6,9 +6,9 @@ import dataclasses
 import os
 
 from orlando_toolkit.core.utils import generate_dita_id
-from orlando_toolkit.core.parser import iter_block_items
+from .docx_parser import iter_block_items
 from docx.text.paragraph import Paragraph  # type: ignore
-from orlando_toolkit.core.converter.helpers import process_paragraph_content_and_images
+from ..services.formatting_helpers import process_paragraph_content_and_images
 from docx.oxml.ns import qn
 
 logger = logging.getLogger(__name__)

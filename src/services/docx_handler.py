@@ -7,8 +7,9 @@ Microsoft Word documents (.docx) to DITA format using the plugin architecture.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Callable
 
 from orlando_toolkit.core.models import DitaContext
 from orlando_toolkit.core.plugins.interfaces import DocumentHandlerBase
@@ -34,12 +35,42 @@ class DocxDocumentHandler(DocumentHandlerBase):
         """
         return file_path.suffix.lower() == '.docx'
     
-    def convert_to_dita(self, file_path: Path, metadata: Dict[str, Any]) -> DitaContext:
+    def handle_document(self, file_path: str) -> Any:
+        """Handle document processing - main app interface method.
+        
+        Args:
+            file_path: Path to the document file (as string)
+            
+        Returns:
+            DitaContext with converted content
+            
+        Raises:
+            Exception: If processing fails
+        """
+        from pathlib import Path
+        
+        # Convert string path to Path object
+        path_obj = Path(file_path)
+        
+        # Use default metadata for now - in a full implementation,
+        # this could be extracted from plugin config or user input
+        metadata = {
+            'title': path_obj.stem,
+            'source_format': 'docx',
+            'conversion_time': str(datetime.now())
+        }
+        
+        # Call the existing conversion method
+        return self.convert_to_dita(path_obj, metadata)
+    
+    def convert_to_dita(self, file_path: Path, metadata: Dict[str, Any], 
+                       progress_callback: Optional[Callable[[str], None]] = None) -> DitaContext:
         """Convert DOCX file to DitaContext.
         
         Args:
             file_path: Path to the source DOCX document
             metadata: Conversion metadata and configuration options
+            progress_callback: Optional callback function for progress updates
             
         Returns:
             DitaContext containing the complete DITA archive data
@@ -56,7 +87,7 @@ class DocxDocumentHandler(DocumentHandlerBase):
         
         # Get plugin configuration if available
         plugin_config = getattr(self, '_plugin_config', {})
-        return convert_docx_to_dita_internal(str(file_path), metadata, plugin_config)
+        return convert_docx_to_dita_internal(str(file_path), metadata, plugin_config, progress_callback)
     
     def get_supported_extensions(self) -> List[str]:
         """Return list of supported file extensions.

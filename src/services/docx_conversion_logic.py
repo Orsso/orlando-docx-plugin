@@ -12,7 +12,7 @@ import time
 import uuid
 import warnings
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Callable
 
 from docx import Document  # type: ignore
 from lxml import etree as ET  # type: ignore
@@ -37,7 +37,8 @@ logger = logging.getLogger(__name__)
 
 
 def convert_docx_to_dita_internal(file_path: str, metadata: Dict[str, Any], 
-                                 plugin_config: Dict[str, Any] = None) -> DitaContext:
+                                 plugin_config: Dict[str, Any] = None,
+                                 progress_callback: Optional[Callable[[str], None]] = None) -> DitaContext:
     """Convert a DOCX file into an in-memory DitaContext.
 
     Processes Word document structure, formatting, images, and metadata
@@ -61,10 +62,14 @@ def convert_docx_to_dita_internal(file_path: str, metadata: Dict[str, Any],
     context = DitaContext(metadata=dict(metadata))
 
     try:
+        if progress_callback:
+            progress_callback("Loading DOCX file...")
         logger.info("Loading DOCX file...")
         doc = Document(file_path)
         all_images_map_rid = extract_images_to_context(doc, context)
 
+        if progress_callback:
+            progress_callback("Extracting images...")
         logger.info("Extracting images...")
 
         map_root = ET.Element("map")
@@ -121,6 +126,8 @@ def convert_docx_to_dita_internal(file_path: str, metadata: Dict[str, Any],
             mfp_int = 3
 
         # Build base style map and optionally augment with structural inference
+        if progress_callback:
+            progress_callback("Detecting and analyzing document styles...")
         from ..utils.style_analyzer import build_style_heading_map
         
         base_t0 = time.perf_counter()
@@ -158,9 +165,11 @@ def convert_docx_to_dita_internal(file_path: str, metadata: Dict[str, Any],
                 legacy_added += 1
 
         # Generic heading-name detection (e.g., "HEADING 5 GM"). From config, metadata can override.
+        # Get plugin config or use empty dict as fallback
+        docx_config = plugin_config.get("docx_conversion", {}) if plugin_config else {}
         generic_match_enabled = metadata.get(
             "generic_heading_match",
-            bool(style_detection_config.get("generic_heading_match", False)),
+            bool(docx_config.get("generic_heading_match", False)),
         )
         generic_added = 0
         generic_ms = 0
@@ -211,14 +220,20 @@ def convert_docx_to_dita_internal(file_path: str, metadata: Dict[str, Any],
         # ======================================================================
 
         # Pass 1: Build complete document structure
+        if progress_callback:
+            progress_callback("Analyzing document structure...")
         logger.info("Analyzing document structure...")
         root_nodes = build_document_structure(doc, style_heading_map, all_images_map_rid)
 
         # Pass 2: Determine section vs module roles
+        if progress_callback:
+            progress_callback("Determining section/module roles...")
         logger.info("Determining section/module roles...")
         determine_node_roles(root_nodes)
 
         # Pass 3: Generate DITA topics and map structure
+        if progress_callback:
+            progress_callback("Building topics...")
         logger.info("Building topics...")
         heading_counters = [0] * 9
 
@@ -279,5 +294,7 @@ def convert_docx_to_dita_internal(file_path: str, metadata: Dict[str, Any],
         logger.error("Conversion failed: %s", exc, exc_info=True)
         raise
 
+    if progress_callback:
+        progress_callback("Conversion finished.")
     logger.info("Conversion finished.")
     return context
