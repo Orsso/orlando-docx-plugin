@@ -87,14 +87,18 @@ class DocxConverterPlugin(BasePlugin, UIExtension):
             self._document_handler._plugin_config = self.config
             
             if self.app_context and hasattr(self.app_context, 'service_registry'):
-                self.app_context.service_registry.register_service(
-                    'DocumentHandler', self._document_handler, self.plugin_id
+                self.app_context.service_registry.register_document_handler(
+                    self._document_handler, self.plugin_id
                 )
                 self.log_info("Registered DOCX DocumentHandler service")
             
             # Register UI extensions
             if self.app_context and hasattr(self.app_context, 'ui_registry'):
                 try:
+                    # Register UI capabilities that the UI will check for
+                    self.app_context.ui_registry.register_plugin_capability(self.plugin_id, "heading_filter")
+                    self.app_context.ui_registry.register_plugin_capability(self.plugin_id, "style_toggle")
+                    
                     # Register heading filter panel factory
                     self.app_context.ui_registry.register_panel_factory(
                         'heading_filter', self.create_heading_filter_panel, self.plugin_id
@@ -107,7 +111,7 @@ class DocxConverterPlugin(BasePlugin, UIExtension):
                     # Register marker provider
                     self._marker_provider = DocxStyleMarkerProvider()
                     self.app_context.ui_registry.register_marker_provider(
-                        self._marker_provider, self.plugin_id
+                        self.plugin_id, self._marker_provider
                     )
                     self.log_info("Registered DOCX style marker provider")
                 except AttributeError:
@@ -219,6 +223,7 @@ class DocxConverterPlugin(BasePlugin, UIExtension):
 
 class DocxStyleMarkerProvider(MarkerProvider):
     """Marker provider for DOCX style-based markers in the UI."""
+    
     
     def get_provider_name(self) -> str:
         """Get the name of this marker provider."""

@@ -22,8 +22,8 @@ from docx.oxml.ns import qn  # type: ignore
 from orlando_toolkit.core.utils import (
     slugify,
     generate_dita_id,
-    convert_color_to_outputclass,
 )
+from ..utils.color_utils import convert_color_to_outputclass
 # Note: Plugin now manages its own color configuration
 from ..utils.style_analyzer import _detect_builtin_heading_level
 
