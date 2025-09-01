@@ -99,9 +99,9 @@ class DocxConverterPlugin(BasePlugin, UIExtension):
                     self.app_context.ui_registry.register_plugin_capability(self.plugin_id, "heading_filter")
                     self.app_context.ui_registry.register_plugin_capability(self.plugin_id, "style_toggle")
                     
-                    # Register heading filter panel factory
+                    # Register heading filter panel factory (PanelFactory object)
                     self.app_context.ui_registry.register_panel_factory(
-                        'heading_filter', self.create_heading_filter_panel, self.plugin_id
+                        'heading_filter', DocxHeadingFilterPanelFactory(self), self.plugin_id
                     )
                     self.log_info("Registered heading filter panel factory")
                 except AttributeError:
@@ -116,7 +116,17 @@ class DocxConverterPlugin(BasePlugin, UIExtension):
                     self.log_info("Registered DOCX style marker provider")
                 except AttributeError:
                     self.log_warning("UI registry does not support marker provider registration")
-                
+            # Register FilterProvider service
+            try:
+                if self.app_context and hasattr(self.app_context, 'service_registry'):
+                    from .services.filter_provider import DocxFilterProvider
+                    self.app_context.service_registry.register_filter_provider(
+                        DocxFilterProvider(), self.plugin_id
+                    )
+                    self.log_info("Registered DOCX FilterProvider service")
+            except Exception as e:
+                self.log_warning(f"Failed to register FilterProvider: {e}")
+
         except Exception as e:
             self.log_error(f"Failed to activate plugin: {e}")
             raise
@@ -134,6 +144,10 @@ class DocxConverterPlugin(BasePlugin, UIExtension):
                     )
                     self._document_handler = None
                     self.log_info("Unregistered DOCX DocumentHandler service")
+                try:
+                    self.app_context.service_registry.unregister_filter_provider(self.plugin_id)
+                except Exception:
+                    pass
             
             # Unregister UI extensions
             if self.app_context and hasattr(self.app_context, 'ui_registry'):
@@ -172,7 +186,7 @@ class DocxConverterPlugin(BasePlugin, UIExtension):
         """Register UI components with the UI registry."""
         try:
             ui_registry.register_panel_factory(
-                'heading_filter', self.create_heading_filter_panel, self.plugin_id
+                'heading_filter', DocxHeadingFilterPanelFactory(self), self.plugin_id
             )
             
             if not self._marker_provider:
@@ -196,7 +210,7 @@ class DocxConverterPlugin(BasePlugin, UIExtension):
     def get_panel_factories(self) -> Dict[str, Any]:
         """Get panel factories provided by this extension."""
         return {
-            'heading_filter': self.create_heading_filter_panel
+            'heading_filter': DocxHeadingFilterPanelFactory(self)
         }
     
     def get_marker_providers(self) -> Dict[str, Any]:
@@ -207,18 +221,42 @@ class DocxConverterPlugin(BasePlugin, UIExtension):
             'docx_styles': self._marker_provider
         }
     
+    # Backward-compatible function retained if older hosts call it
     def create_heading_filter_panel(self, parent, **kwargs):
-        """Factory method to create heading filter panel instances.
-        
-        Args:
-            parent: Parent widget for the panel
-            **kwargs: Additional arguments passed to panel constructor
-            
-        Returns:
-            HeadingFilterPanel instance
-        """
         from .ui.heading_filter import HeadingFilterPanel
         return HeadingFilterPanel(parent, **kwargs)
+
+
+class DocxHeadingFilterPanelFactory:
+    """PanelFactory for DOCX heading filter panel with emoji button support."""
+
+    def __init__(self, plugin: 'DocxConverterPlugin') -> None:
+        self._plugin = plugin
+
+    def create_panel(self, parent, context=None, **kwargs):
+        from .ui.heading_filter import HeadingFilterPanel
+        return HeadingFilterPanel(parent, **kwargs)
+
+    def get_panel_type(self) -> str:
+        return 'heading_filter'
+
+    def get_display_name(self) -> str:
+        return 'Heading Filter'
+
+    def get_role(self) -> str:
+        # Declare this factory as a standard 'filter' panel
+        return 'filter'
+
+    def get_button_emoji(self) -> str:
+        # Bookmark represents headings; safe, compact emoji
+        return "\U0001F516"
+
+    def cleanup_panel(self, panel) -> None:
+        try:
+            if hasattr(panel, 'destroy'):
+                panel.destroy()
+        except Exception:
+            pass
 
 
 class DocxStyleMarkerProvider(MarkerProvider):
