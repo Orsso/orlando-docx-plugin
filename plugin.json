@@ -10,7 +10,7 @@
   "plugin_api_version": "1.0",
   "category": "pipeline",
   
-  "entry_point": "src.plugin.DocxConverterPlugin",
+  "entry_point": "docx_plugin.plugin.DocxConverterPlugin",
   
   "supported_formats": [
     {
