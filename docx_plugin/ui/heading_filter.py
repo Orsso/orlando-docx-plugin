@@ -79,6 +79,9 @@ class HeadingFilterPanel(ttk.Frame):
         self._style_visibility: Dict[str, bool] = {}
         # Keep last known assigned colors from controller to keep icons in sync
         self._assigned_colors: Dict[str, str] = {}
+        # Selection state for topic occurrences display
+        self._selected_style: Optional[str] = None
+        self._occurrences_listbox: Optional[tk.Listbox] = None
 
         # Styles for hover/selection feedback (best-effort, safe across themes)
         try:
@@ -91,8 +94,8 @@ class HeadingFilterPanel(ttk.Frame):
                 "HeadingFilter.Hover.TLabel",
                 foreground=[("active", "#0078b3")],
             )
-            # Selected style: stronger emphasis (match tree style marker orange)
-            style.configure("HeadingFilter.Selected.TLabel", foreground="#F57C00")
+            # Selected style: stronger emphasis (consistent with orlando-toolkit selection color)
+            style.configure("HeadingFilter.Selected.TLabel", foreground="#0098e4")
             try:
                 # Bold font may not exist on all platforms; ignore failures
                 style.configure("HeadingFilter.Selected.TLabel", font=("", 9, "bold"))
@@ -110,9 +113,17 @@ class HeadingFilterPanel(ttk.Frame):
         self._status = ttk.Label(self, textvariable=self._status_var)
         self._status.grid(row=0, column=0, sticky="ew", padx=6, pady=(4, 4))
 
-        # Notebook to group by levels
-        self._notebook = ttk.Notebook(self)
-        self._notebook.grid(row=1, column=0, sticky="nsew", padx=6, pady=(0, 6))
+        # Main split layout (50/50)
+        self._main_paned = ttk.PanedWindow(self, orient="vertical")
+        self._main_paned.grid(row=1, column=0, sticky="nsew", padx=6, pady=(0, 6))
+
+        # Notebook to group by levels (top section)
+        self._notebook = ttk.Notebook(self._main_paned)
+        self._main_paned.add(self._notebook, weight=1)
+
+        # Occurrences section (bottom section)
+        self._occurrences_frame = self._create_occurrences_section()
+        self._main_paned.add(self._occurrences_frame, weight=1)
 
         # Internal per-tab widgets: level -> (canvas, inner_frame)
         self._level_frames: Dict[str, ttk.Frame] = {}
@@ -150,7 +161,12 @@ class HeadingFilterPanel(ttk.Frame):
 
         Retained for compatibility with callers in `structure_tab.py`.
         """
-        pass
+        try:
+            self._selected_style = None
+            self._update_selection_styling()
+            self._update_occurrences_display()
+        except Exception:
+            pass
 
     def toggle_style_visibility(self, style: str, visible: bool) -> None:
         """Programmatically toggle the visibility of a given style.
@@ -173,6 +189,32 @@ class HeadingFilterPanel(ttk.Frame):
     def get_visible_styles(self) -> Dict[str, bool]:
         """Return the current visibility state for all styles."""
         return dict(self._style_visibility)
+
+    def get_selected_style(self) -> Optional[str]:
+        """Return the currently selected style for topic occurrences display."""
+        return self._selected_style
+
+    def _create_occurrences_section(self) -> ttk.Frame:
+        """Create the topic occurrences display section."""
+        frame = ttk.Frame(self._main_paned)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+        
+        # Scrollable list container (consistent with top section design)
+        container = ttk.Frame(frame, borderwidth=1, relief="solid")
+        container.grid(row=0, column=0, sticky="nsew", padx=6, pady=4)
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(0, weight=1)
+        
+        # Listbox with scrollbar
+        self._occurrences_listbox = tk.Listbox(container, selectmode="none")
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self._occurrences_listbox.yview)
+        self._occurrences_listbox.configure(yscrollcommand=scrollbar.set)
+        
+        self._occurrences_listbox.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        
+        return frame
 
     # --- UI construction helpers ---
 
@@ -266,8 +308,9 @@ class HeadingFilterPanel(ttk.Frame):
                     )
                     self._toggle_buttons_by_style[style] = toggle_btn
                 
-                # Left-align style name for better readability
-                lbl_style = ttk.Label(inner, text=str(style), anchor="w", style="HeadingFilter.Row.TLabel", justify="left")
+                # Left-align style name for better readability - now clickable for selection
+                lbl_style = ttk.Label(inner, text=str(style), anchor="w", style="HeadingFilter.Row.TLabel", justify="left", cursor="hand2")
+                lbl_style.bind("<Button-1>", lambda e, s=style: self._on_style_selected(s))
                 occ = int(self._headings_count.get(style, 0))
                 lbl_occ = ttk.Label(inner, text=str(occ), width=8, anchor="e", style="HeadingFilter.Row.TLabel")
 
@@ -543,6 +586,59 @@ class HeadingFilterPanel(ttk.Frame):
         except Exception:
             pass
         self._on_apply()
+
+    def _on_style_selected(self, style: str) -> None:
+        """Handle click on a style name for topic occurrences selection."""
+        try:
+            # Toggle selection
+            if self._selected_style == style:
+                self._selected_style = None  # Deselect
+            else:
+                self._selected_style = style  # Select new
+            
+            # Update visuals
+            self._update_selection_styling()
+            
+            # Refresh occurrences
+            self._update_occurrences_display()
+        except Exception:
+            pass
+
+    def _update_selection_styling(self) -> None:
+        """Update visual styling for all style labels based on selection state."""
+        try:
+            for style, label in self._labels_by_style.items():
+                if style == self._selected_style:
+                    label.configure(style="HeadingFilter.Selected.TLabel")
+                else:
+                    label.configure(style="HeadingFilter.Row.TLabel")
+        except Exception:
+            pass
+
+    def _update_occurrences_display(self) -> None:
+        """Update the occurrences listbox based on selected style."""
+        if not self._occurrences_listbox:
+            return
+            
+        try:
+            # Clear current
+            self._occurrences_listbox.delete(0, tk.END)
+            
+            if not self._selected_style:
+                return
+                
+            # Get occurrences for selected style
+            occurrences = self._occurrences.get(self._selected_style, [])
+            
+            # Reverse order to match main app display (first occurrence first)
+            occurrences = list(reversed(occurrences))
+            
+            # Extract and display titles
+            for occurrence in occurrences:
+                title = occurrence.get('title', occurrence.get('text', 'Untitled'))
+                self._occurrences_listbox.insert(tk.END, title)
+        except Exception:
+            pass
 
     # --- External sync helpers (used by StructureTab) ---
     def update_style_colors(self, colors: Dict[str, str]) -> None:
