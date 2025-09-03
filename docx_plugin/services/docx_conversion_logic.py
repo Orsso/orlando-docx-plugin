@@ -21,7 +21,7 @@ from orlando_toolkit.core.models import DitaContext
 # Removed ConfigManager import - plugin manages its own configuration
 
 from ..utils.docx_parser import extract_images_to_context, iter_block_items
-from ..utils.style_analyzer import _analyze_structural_patterns, _detect_generic_heading_level
+from ..utils.style_analyzer import build_style_heading_map
 from .formatting_helpers import (
     STYLE_MAP,
     add_orlando_topicmeta,
@@ -92,101 +92,23 @@ def convert_docx_to_dita_internal(file_path: str, metadata: Dict[str, Any],
         # Unified structural inference flag (backward-compatible):
         # Priority order for enabling: metadata.enable_structural_style_inference →
         # metadata.use_structural_analysis → metadata.use_enhanced_style_detection →
-        # plugin_config.enable_structural_style_inference → plugin_config.use_structural_analysis → 
-        # plugin_config.use_enhanced_style_detection → default False
-        enable_structural = metadata.get("enable_structural_style_inference")
-        if enable_structural is None:
-            usa_md = metadata.get("use_structural_analysis")
-            enh_md = metadata.get("use_enhanced_style_detection")
-            if usa_md is not None:
-                enable_structural = bool(usa_md)
-            elif enh_md is not None:
-                enable_structural = bool(enh_md)
-        if enable_structural is None:
-            es_cfg = docx_conversion_config.get("enable_structural_style_inference")
-            if es_cfg is not None:
-                enable_structural = bool(es_cfg)
-            else:
-                usa_cfg = docx_conversion_config.get("use_structural_analysis")
-                enh_cfg = docx_conversion_config.get("use_enhanced_style_detection")
-                if usa_cfg is not None:
-                    enable_structural = bool(usa_cfg)
-                elif enh_cfg is not None:
-                    enable_structural = bool(enh_cfg)
-        if enable_structural is None:
-            enable_structural = False
+        # Note: Legacy structural analysis configuration is no longer used.
+        # The intelligent classifier handles all style detection internally.
 
-        # Structural inference parameter (only used if structural is enabled)
-        mfp = metadata.get("min_following_paragraphs")
-        if mfp is None:
-            mfp = docx_conversion_config.get("min_following_paragraphs", 3)
-        try:
-            mfp_int = int(mfp)
-        except Exception:
-            mfp_int = 3
-
-        # Build base style map and optionally augment with structural inference
+        # Intelligent style classification (replaces all legacy detection methods)
         if progress_callback:
             progress_callback("Detecting and analyzing document styles...")
-        from ..utils.style_analyzer import build_style_heading_map
         
-        base_t0 = time.perf_counter()
-        base_map = build_style_heading_map(doc)
-        base_ms = int((time.perf_counter() - base_t0) * 1000)
-        style_heading_map = dict(base_map)
-        structural_added = 0
-        structural_ms = 0
-
-        if enable_structural:
-            st_t0 = time.perf_counter()
-            try:
-                structural_styles = _analyze_structural_patterns(doc, mfp_int)
-            except Exception as e:
-                logger.warning(f"Structural analysis failed: {e}")
-                structural_styles = {}
-            # Add-only merge: do not override base detection
-            before = len(style_heading_map)
-            for style_name, level in (structural_styles or {}).items():
-                if style_name not in style_heading_map:
-                    style_heading_map[style_name] = level
-            structural_added = len(style_heading_map) - before
-            structural_ms = int((time.perf_counter() - st_t0) * 1000)
-        else:
-            pass
-
-        # Apply legacy and user overrides with clear priority order
-        logger.debug(f"Base style map: {len(base_map)} styles")
-
-        # Legacy STYLE_MAP: fill missing only (lower priority than base/structural)
+        style_t0 = time.perf_counter()
+        style_heading_map = build_style_heading_map(doc, plugin_config)
+        style_ms = int((time.perf_counter() - style_t0) * 1000)
+        
+        # Apply user overrides from STYLE_MAP (user mappings take precedence)
         legacy_added = 0
         for k, v in STYLE_MAP.items():
             if k not in style_heading_map:
                 style_heading_map[k] = v
                 legacy_added += 1
-
-        # Generic heading-name detection (e.g., "HEADING 5 GM"). From config, metadata can override.
-        # Get plugin config or use empty dict as fallback
-        docx_config = plugin_config.get("docx_conversion", {}) if plugin_config else {}
-        generic_match_enabled = metadata.get(
-            "generic_heading_match",
-            bool(docx_config.get("generic_heading_match", False)),
-        )
-        generic_added = 0
-        generic_ms = 0
-        if generic_match_enabled:
-            gen_t0 = time.perf_counter()
-            for sty in getattr(doc, "styles", []) or []:  # type: ignore[attr-defined]
-                try:
-                    name = getattr(sty, "name", None)  # type: ignore[attr-defined]
-                    if not name or name in style_heading_map:
-                        continue
-                    level = _detect_generic_heading_level(name)
-                    if level:
-                        style_heading_map[name] = level
-                        generic_added += 1
-                except Exception:
-                    continue
-            generic_ms = int((time.perf_counter() - gen_t0) * 1000)
 
         # User override mapping (highest priority): allow overrides and additions
         if isinstance(metadata.get("style_heading_map"), dict):
@@ -204,8 +126,8 @@ def convert_docx_to_dita_internal(file_path: str, metadata: Dict[str, Any],
 
         # Final style detection summary
         logger.info(
-            "Style detection: base=%s structural_added=%s legacy_fill=%s generic_added=%s total=%s | base_ms=%sms structural_ms=%sms generic_ms=%sms",
-            len(base_map), structural_added, legacy_added, generic_added, len(style_heading_map), base_ms, structural_ms, generic_ms,
+            "Style detection: intelligent=%s legacy_fill=%s total=%s | detection_ms=%sms",
+            len(style_heading_map) - legacy_added, legacy_added, len(style_heading_map), style_ms,
         )
         logger.debug(f"Final style heading map: {len(style_heading_map)} styles detected")
         if logger.isEnabledFor(logging.DEBUG):
