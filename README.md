@@ -1,82 +1,56 @@
-# DOCX Converter Plugin
+# Orlando DOCX Plugin
 
-**⚠️ DEPENDANCE REPOSITORY**: Plugin for Orlando Toolkit.
+A plugin for Orlando Toolkit that converts Microsoft Word (DOCX) files to DITA topics with style-aware structure and in-app heading analysis.
 
-Convert Microsoft Word documents to DITA format with advanced style analysis and UI extensions.
-
+Note: This plugin is in early development. Please review and validate all outputs.
 ## Features
 
-- **Document Conversion**: DOCX to DITA transformation with topic structure generation
-- **Style Analysis**: Intelligent heading detection and style mapping  
-- **Image Processing**: Automatic extraction and format optimization
-- **UI Extensions**: Heading filter panel and style marker visualization
+- **Convert DOCX to DITA**: Generates DITA topics from Word documents
+- **Style-aware headings**: Built-in and inferred heading detection and mapping
+- **Image extraction**: Saves embedded images and relinks them in topics
+- **In-app tools**: Heading Filter panel and style markers in the Structure tab
 
 ## Installation
 
-### Automatic Installation (Recommended)
+**Via Orlando Toolkit Plugin Manager:**
 
-1. Install Orlando Toolkit and launch application
-2. Open Plugin Management from splash screen
-3. Enter repository URL: `https://github.com/orsso/orlando-docx-plugin`
-4. Click "Import Plugin" to download and install
-5. Activate plugin to enable DOCX conversion
+1. Open Plugin Management from Orlando Toolkit splash screen
+2. Enter this repository URL: `https://github.com/orsso/orlando-docx-plugin`
+3. Click "Import Plugin" to install
+4. Activate the plugin
 
-### Manual Installation (Development)
+## Usage
 
-1. Clone repository to local environment
-2. Install dependencies: `pip install -r requirements.txt` 
-3. Use "Install from Directory" in Orlando Toolkit Plugin Management
+**Import from DOCX**: Choose a `.docx` file → the plugin converts it to one or more DITA topics based on detected headings.
 
-## Quick Start
+```
+MyManual.docx
+└── ➜ topics/
+    ├── topic_abc123.dita
+    ├── topic_def456.dita
+    └── media/ (extracted images referenced by topics)
+```
 
-1. Launch Orlando Toolkit with plugin installed
-2. Use "Import from DOCX" button on splash screen
-3. Configure conversion settings and style mappings
-4. Review structure using heading filter panel
-5. Convert to generate DITA archive
+**Heading analysis**: Use the Heading Filter panel in the Structure tab to inspect detected headings and fine-tune mapping.
 
-## Dependencies
+## Output
 
-- **python-docx**: DOCX parsing and structure analysis
-- **lxml**: XML processing for DITA generation
-- **Pillow**: Image processing and format conversion
-- **requests**: HTTP requests for external resources
+- **DITA Topics**: `.dita` files with sections derived from document structure
+- **Media Files**: Extracted images saved in a `media/` folder and referenced from topics
+- **Metadata**: Optional fields (title, manual code/reference, revision) added to topic metadata when provided
+
+## Requirements
+
+- **Orlando Toolkit**: 1.2.0+
+- **Python**: 3.8+
 
 ## Documentation
 
-- **[Architecture](docs/architecture.md)**: Plugin structure and component overview
-- **[API Reference](docs/api.md)**: Classes, methods, and data structures
-- **[Development Guide](docs/development.md)**: Setup, structure, and extension points
-- **[Usage Guide](docs/usage.md)**: Conversion workflow and troubleshooting
-
-## Plugin Structure
-
-```
-src/
-├── plugin.py              # Main plugin entry point
-├── services/              # Core conversion services  
-│   ├── docx_handler.py    # Document handler implementation
-│   ├── docx_conversion_logic.py  # Conversion algorithms
-│   └── structure_analyzer.py     # Document structure analysis
-├── ui/                    # UI components
-│   └── heading_filter.py  # Heading filter panel
-└── utils/                 # Utility modules
-    ├── dita_builder.py    # DITA XML generation
-    └── style_analyzer.py  # Style detection
-```
-
-## Compatibility
-
-- **Orlando Toolkit**: 1.2.0+
-- **Plugin API**: 1.0  
-- **Python**: 3.8+
-- **Microsoft Word**: 2007+ (DOCX format)
-
-## Support
-
-- **Issues**: Submit via repository issues or main [Orlando Toolkit repository](https://github.com/orsso/orlando-toolkit/issues)
-- **Documentation**: [Plugin Development Guide](https://github.com/orsso/orlando-toolkit/blob/main/docs/PLUGIN_DEVELOPMENT_GUIDE.md)
+- **[Architecture](docs/architecture.md)**
+- **[API Reference](docs/api.md)**
+- **[Development Guide](docs/development.md)**
+- **[Usage Guide](docs/usage.md)**
 
 ## License
 
-MIT License - same as Orlando Toolkit main project.
+MIT License.

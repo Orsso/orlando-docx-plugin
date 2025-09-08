@@ -17,9 +17,9 @@ DocxConversionLogic
 ```
 
 ### UI Extensions
-- **HeadingFilterPanel**: Right panel for heading management
+- **HeadingFilterPanel**: Panel for heading management and style filtering
 - **DocxStyleMarkerProvider**: Style visualization in scrollbar
-- **Integration**: Orlando Toolkit UI registry system
+- **Integration**: Registered via plugin UI extension hooks
 
 ## Plugin Lifecycle
 

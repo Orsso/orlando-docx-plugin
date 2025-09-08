@@ -6,53 +6,50 @@
 Main document conversion service.
 
 **Methods:**
-- `can_handle(file_path: str) -> bool`: File format validation
-- `convert_to_dita(file_path: str, **kwargs) -> DitaPackage`: Primary conversion
+- `can_handle(file_path: Path) -> bool`: File format validation
+- `handle_document(file_path: str) -> DitaContext`: App-facing entry point
+- `convert_to_dita(file_path: Path, metadata: Dict[str, Any], progress_callback: Optional[Callable[[str], None]]) -> DitaContext`: Primary conversion
 - `get_supported_extensions() -> List[str]`: Returns `['.docx']`
 
 ### DocxConversionLogic
-Core conversion algorithms.
+Core conversion algorithms (`convert_docx_to_dita_internal`).
 
-**Methods:**
-- `process_document(doc: Document) -> DitaStructure`: Document processing
-- `extract_images(doc: Document) -> List[ImageRef]`: Image extraction
-- `generate_topics(structure: DitaStructure) -> List[Topic]`: Topic generation
+**Responsibilities:**
+- Load DOCX, build style heading map, extract images
+- Build hierarchical structure and generate DITA topics and map
+- Apply metadata (title, revision_date, codes) and tocIndex
 
 ### StructureAnalyzer
 Document structure analysis.
 
-**Methods:**
-- `analyze_headings(doc: Document) -> HeadingStructure`: Heading detection
-- `build_hierarchy(headings: List[Heading]) -> TopicTree`: Topic hierarchy
-- `validate_structure(tree: TopicTree) -> ValidationResult`: Structure validation
+**Key functions:**
+- `build_document_structure(doc, style_heading_map, all_images_map_rid) -> List[HeadingNode]`
+- `determine_node_roles(nodes) -> None`
+- `generate_dita_from_structure(nodes, context, metadata, all_images_map_rid, parent_element, heading_counters, color_rules) -> None`
 
 ### StyleAnalyzer
 Style detection and mapping.
 
-**Methods:**
-- `detect_heading_styles(doc: Document) -> List[StyleDef]`: Style detection
-- `map_styles_to_dita(styles: List[StyleDef]) -> StyleMapping`: DITA mapping
-- `get_style_hierarchy() -> Dict[str, int]`: Style level mapping
+**Key function:**
+- `build_style_heading_map(doc: Document, plugin_config: Optional[Dict[str, Any]] = None) -> Dict[str, int]`
 
 ## UI Components
 
 ### HeadingFilterPanel
 Heading management interface.
 
-**Properties:**
-- `heading_styles: List[HeadingStyle]`: Available heading styles
-- `visible_levels: Set[int]`: Currently visible heading levels
-
-**Methods:**
-- `update_filter(levels: Set[int])`: Update visibility filter
-- `refresh_styles()`: Reload style information
+**Public API:**
+- `set_data(headings_count, occurrences_by_style, style_levels, current_exclusions)`
+- `update_status(text)`
+- `clear_selection()`
+- `toggle_style_visibility(style, visible)`
+- `get_visible_styles()` / `get_selected_style()`
 
 ### DocxStyleMarkerProvider
 Style visualization markers.
 
-**Methods:**
-- `get_markers(document: Document) -> List[Marker]`: Generate style markers
-- `update_markers(styles: List[StyleDef])`: Update marker display
+**Description:**
+- Provides style-based markers for the scrollbar visualization
 
 ## Data Structures
 

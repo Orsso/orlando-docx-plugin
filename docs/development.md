@@ -3,7 +3,7 @@
 ## Project Structure
 
 ```
-src/
+docx_plugin/
 ├── plugin.py              # Main plugin entry point
 ├── services/              # Core conversion services
 │   ├── docx_handler.py    # Document handler implementation
@@ -32,22 +32,22 @@ src/
 ```python
 def on_activate(self):
     self.framework.document_service.register_handler(DocxDocumentHandler())
-    self.framework.ui_service.register_panel("heading_filter", HeadingFilterPanel)
+    # UI panel and markers are registered by the plugin via UIExtension hooks
 ```
 
 ### Style Detection Logic
-Located in `src/utils/style_analyzer.py`:
-- Font size-based heading detection
-- Style name pattern matching
-- Hierarchical level assignment
-- Color coding for visualization
+Located in `docx_plugin/utils/style_analyzer.py`:
+- Built-in "Heading N" detection (1-9)
+- Numeric-leading style patterns (e.g., "1.2 Section")
+- International heading terms (e.g., "Titre", "Kapitel")
+- Explicit outline level if defined on the style
 
 ### DITA Generation
-Located in `src/utils/dita_builder.py`:
-- Topic structure creation
-- DITAMAP generation
-- Image reference handling
-- Metadata preservation
+Located in `docx_plugin/utils/dita_builder.py` and service layer:
+- Topic structure creation (concept topics)
+- Ditamap topicref/topichead generation with tocIndex
+- Image reference handling and media extraction
+- Metadata preservation (manual_code, manual_reference, revision)
 
 ## Testing
 

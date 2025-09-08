@@ -24,9 +24,10 @@
 ## Style Management
 
 ### Automatic Detection
-- **Font Size**: Larger fonts detected as higher-level headings
-- **Style Names**: Word style names mapped to DITA levels
-- **Formatting**: Bold, color, and other attributes considered
+- **Built-in Headings**: Word built-ins like "Heading 1..9" mapped to levels
+- **Numeric-leading Styles**: Styles like "1.2 Chapter" infer level depth
+- **International Patterns**: Common localized heading terms detected
+- **Outline Level**: Explicit style outlineLvl used when available
 
 ### Manual Override
 - **Custom Mapping**: Configure style-to-level assignments
@@ -36,15 +37,15 @@
 ## Conversion Options
 
 ### Document Metadata
-- **Title**: Document title for DITAMAP
-- **ID**: Unique identifier generation
-- **Author**: Author information preservation
-- **Subject**: Topic categorization
+- **manual_title**: Title for the generated DITA map
+- **manual_code**: Manual code stored in metadata
+- **manual_reference**: Reference code stored in metadata
+- **revision_date**: YYYY-MM-DD for created/revised metadata
+- **revision_number**: Revision number stored in metadata
 
 ### Processing Settings
 - **Image Handling**: Extract and optimize images
 - **Table Conversion**: Preserve table structure in DITA
-- **Link Processing**: Maintain cross-references
 - **List Formatting**: Convert numbered and bulleted lists
 
 ## Troubleshooting
@@ -58,5 +59,7 @@
 ### Solutions
 - **Remap Styles**: Use heading filter to adjust level assignments
 - **Check Source**: Validate DOCX file in Microsoft Word
-- **Review Logs**: Check Orlando Toolkit console for error details
+- **Review Logs**: Check Orlando Toolkit logs for error details
 - **Clean Document**: Remove problematic formatting from source
+
+Note: This plugin is in early development. Please review and validate all outputs.
