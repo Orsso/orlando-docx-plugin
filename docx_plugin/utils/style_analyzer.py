@@ -8,7 +8,7 @@ to handle international Word documents and edge cases gracefully.
 
 from __future__ import annotations
 
-from typing import Dict, Set, Optional, Any
+from typing import Dict, Optional, Any
 from docx.document import Document
 from docx.enum.style import WD_STYLE_TYPE
 import re
@@ -26,7 +26,7 @@ def build_style_heading_map(doc: Document, plugin_config: Optional[Dict[str, Any
     
     Args:
         doc: Word document to analyze
-        plugin_config: Plugin configuration containing exclusion rules
+        plugin_config: Optional plugin configuration (reserved for future use)
         
     Returns:
         Dict mapping style names to heading levels (1-9) for legitimate headings only
@@ -52,16 +52,10 @@ def build_style_heading_map(doc: Document, plugin_config: Optional[Dict[str, Any
         'Signature', 'Closing', 'Sans Interligne', 'Texte Normal', 'Citation', 'Legende'
     }
     
-    # Add user-configured exclusions from plugin config
-    if plugin_config:
-        heading_filter_config = plugin_config.get('heading_filter', {})
-        default_exclusions = heading_filter_config.get('default_exclusions', [])
-        for exclusion in default_exclusions:
-            builtin_non_heading_styles.add(exclusion)
-            logger.debug(f"Added user exclusion: '{exclusion}'")
-    
     # Pattern for built-in headings
     builtin_heading_pattern = re.compile(r"^Heading\s+(\d+)$", re.IGNORECASE)
+    # Pattern for numeric-leading styles, e.g. "1.2 Chapitre", "2-3 Section"
+    numeric_leading_pattern = re.compile(r"^\s*(\d+)([.\-]\d+){0,8}\b")
     
     heading_map = {}
     total_paragraph_styles = 0
@@ -83,7 +77,21 @@ def build_style_heading_map(doc: Document, plugin_config: Optional[Dict[str, Any
                                    f"(Built-in Word heading style)")
                         continue
                 
-                # 2. Known built-in non-heading styles (exclude immediately)
+                # 2. Numeric-leading styles (common corporate heading conventions)
+                num_match = numeric_leading_pattern.match(style_name)
+                if num_match:
+                    # Level is number of numeric segments (cap to 6)
+                    matched = num_match.group(0)
+                    segments = re.split(r"[.\-]", re.sub(r"^\s+", "", matched))
+                    segments = [s for s in segments if s.isdigit()]
+                    level = max(1, min(6, len(segments)))
+                    heading_map[style_name] = level
+                    logger.info(
+                        f"Style Classification: '{style_name}' -> HEADING Level {level} (Numeric-leading pattern)"
+                    )
+                    continue
+
+                # 3. Known built-in non-heading styles (exclude immediately)
                 if style_name in builtin_non_heading_styles:
                     logger.debug(f"Style Classification: '{style_name}' -> BODY_TEXT "
                                 f"(Known Word built-in style)")
@@ -101,7 +109,7 @@ def build_style_heading_map(doc: Document, plugin_config: Optional[Dict[str, Any
                 if is_builtin_non_heading:
                     continue
                 
-                # 3. Strong exclusion patterns (never headings)
+                # 4. Strong exclusion patterns (never headings)
                 strong_exclusions = ['caption', 'footnote', 'endnote', 'toc', 'bibliography', 
                                    'format', 'case', 'overview', 'break', 'divider', 'separator']
                 if any(pattern in style_lower for pattern in strong_exclusions):
@@ -109,15 +117,18 @@ def build_style_heading_map(doc: Document, plugin_config: Optional[Dict[str, Any
                                 f"(Strong exclusion pattern)")
                     continue
                 
-                # 4. Medium exclusion patterns
+                # 5. Medium exclusion patterns
                 medium_exclusions = ['quote', 'emphasis', 'strong', 'list', 'continue', 'text']
                 if any(pattern in style_lower for pattern in medium_exclusions):
                     logger.debug(f"Style Classification: '{style_name}' -> BODY_TEXT "
                                 f"(Medium exclusion pattern)")
                     continue
                 
-                # 5. International heading patterns (high confidence)
-                international_patterns = ['titre', 'titulo', 'uberschrift', 'haupt', 'sous-titre']
+                # 6. International heading patterns (high confidence)
+                international_patterns = [
+                    'titre', 'titulo', 'uberschrift', 'haupt', 'sous-titre',
+                    'chapitre', 'partie', 'sous-chapitre', 'sous chapitre', 'sous-section', 'sous section'
+                ]
                 if any(pattern in style_lower for pattern in international_patterns):
                     level = _infer_heading_level(style_name)
                     heading_map[style_name] = level
@@ -125,7 +136,7 @@ def build_style_heading_map(doc: Document, plugin_config: Optional[Dict[str, Any
                                f"(International heading pattern)")
                     continue
                 
-                # 6. Custom heading detection
+                # 7. Custom heading detection
                 if 'heading' in style_lower:
                     # "Heading" overrides "style" when both present
                     if 'style' in style_lower:
@@ -144,7 +155,7 @@ def build_style_heading_map(doc: Document, plugin_config: Optional[Dict[str, Any
                                    f"(Custom style with 'heading' in name)")
                     continue
                 
-                # 7. Organizational patterns
+                # 8. Organizational patterns
                 org_patterns = ['department head', 'section header', 'chapter title', 'part title']
                 if any(pattern in style_lower for pattern in org_patterns):
                     level = _infer_heading_level(style_name)
@@ -153,7 +164,7 @@ def build_style_heading_map(doc: Document, plugin_config: Optional[Dict[str, Any
                                f"(Organizational heading pattern)")
                     continue
                 
-                # 8. Title/header patterns (if no exclusions)
+                # 9. Title/header patterns (if no exclusions)
                 if any(pattern in style_lower for pattern in ['title', 'header']):
                     level = _infer_heading_level(style_name)
                     heading_map[style_name] = level
@@ -161,7 +172,7 @@ def build_style_heading_map(doc: Document, plugin_config: Optional[Dict[str, Any
                                f"(Title/header pattern)")
                     continue
                 
-                # 9. Check for explicit outline level in style
+                # 10. Check for explicit outline level in style
                 try:
                     if hasattr(style, '_element'):
                         outline_vals = style._element.xpath("./w:pPr/w:outlineLvl/@w:val", 
@@ -177,7 +188,7 @@ def build_style_heading_map(doc: Document, plugin_config: Optional[Dict[str, Any
                 except Exception:
                     pass
                 
-                # 10. Default: unknown styles are body text (conservative)
+                # 11. Default: unknown styles are body text (conservative)
                 logger.debug(f"Style Classification: '{style_name}' -> BODY_TEXT "
                             f"(Unknown style, conservative default)")
                         

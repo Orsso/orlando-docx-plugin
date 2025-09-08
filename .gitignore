@@ -138,3 +138,6 @@ test_documents/
 output/
 converted/
 src/__pycache__/plugin.cpython-313.pyc
+WARP.md
+tools/inspect_doc.py
+tools/scan_docs.py

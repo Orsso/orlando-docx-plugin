@@ -159,12 +159,35 @@ def convert_docx_to_dita_internal(file_path: str, metadata: Dict[str, Any],
         logger.info("Building topics...")
         heading_counters = [0] * 9
 
+        # If document has no level-1 headings, create a synthetic root section at level 1
+        try:
+            min_root_level = min((n.level for n in root_nodes), default=None)
+        except Exception:
+            min_root_level = None
+
+        parent_for_generation = map_root
+        if min_root_level is not None and min_root_level > 1:
+            # Create a structural topichead root using the map title
+            topichead_root = ET.SubElement(
+                map_root,
+                "topichead",
+                {"locktitle": "yes"},
+            )
+            topichead_root.set("data-level", "1")
+            tm = ET.SubElement(topichead_root, "topicmeta")
+            nt = ET.SubElement(tm, "navtitle")
+            nt.text = map_title.text or context.metadata.get("manual_title", "Document")
+            # Initialize counters to reflect the presence of a level-1 root
+            heading_counters[0] = 1
+            parent_for_generation = topichead_root
+            logger.info("Inserted synthetic level-1 root section to preserve absolute levels")
+
         generate_dita_from_structure(
             root_nodes,
             context,
             context.metadata,
             all_images_map_rid,
-            map_root,
+            parent_for_generation,
             heading_counters,
             color_rules,
         )

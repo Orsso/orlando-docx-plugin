@@ -270,13 +270,19 @@ def generate_dita_from_structure(
     for node in nodes:
         level = node.level
         
-        # Update heading counters
+        # Update heading counters (ensure depth reflects actual level even when no level-1 parent exists)
         if level > len(heading_counters):
             heading_counters.extend([0] * (level - len(heading_counters)))
+        # Initialize any missing higher levels to 1 so toc_index depth matches "level"
+        for i in range(0, level - 1):
+            if heading_counters[i] == 0:
+                heading_counters[i] = 1
+        # Increment current level and reset deeper levels
         heading_counters[level - 1] += 1
         for i in range(level, len(heading_counters)):
             heading_counters[i] = 0
-        toc_index = ".".join(str(c) for c in heading_counters[:level] if c > 0)
+        # Build toc index using all segments up to current level
+        toc_index = ".".join(str(c) for c in heading_counters[:level])
         
         # Generate unique file name and topic ID
         file_name = f"topic_{uuid.uuid4().hex[:10]}.dita"
@@ -303,9 +309,12 @@ def generate_dita_from_structure(
             ET.SubElement(topicmeta_ref, "othermeta", name="foldout", content="false")
             ET.SubElement(topicmeta_ref, "othermeta", name="tdm", content="false")
             
-            # Preserve style information
+            # Preserve original style information for UI granularity
             if node.style_name:
-                topichead.set("data-style", node.style_name)
+                try:
+                    topichead.set("data-style", node.style_name)
+                except Exception:
+                    pass
             
             # If section has content, create a content module child for it (single-pass)
             module_file = f"topic_{uuid.uuid4().hex[:10]}.dita"
@@ -381,9 +390,12 @@ def generate_dita_from_structure(
             ET.SubElement(topicmeta_ref, "othermeta", name="foldout", content="false")
             ET.SubElement(topicmeta_ref, "othermeta", name="tdm", content="false")
             
-            # Preserve style information
+            # Preserve original style information for UI granularity
             if node.style_name:
-                topicref.set("data-style", node.style_name)
+                try:
+                    topicref.set("data-style", node.style_name)
+                except Exception:
+                    pass
             
             # Store in context
             context.topics[file_name] = module_concept
