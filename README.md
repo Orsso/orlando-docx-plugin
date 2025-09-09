@@ -1,6 +1,6 @@
 # Orlando DOCX Plugin
 
-A plugin for Orlando Toolkit that converts Microsoft Word (DOCX) files to DITA topics with style-aware structure and in-app heading analysis.
+A plugin for [Orlando Toolkit](https://github.com/orsso/orlando-toolkit) that converts Microsoft Word (DOCX) files to DITA topics with style-aware structure and in-app heading analysis.
 
 Note: This plugin is in early development. Please review and validate all outputs.
 ## Features
