@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "display_name": "DOCX Converter",
   "description": "Convert Microsoft Word documents to DITA",
-  "author": "Orlando Toolkit Team",
-  "homepage": "https://github.com/organization/orlando-docx-plugin",
+  "author": "Orsso",
+  "homepage": "https://github.com/orsso/orlando-docx-plugin",
   
   "orlando_version": ">=2.0.0",
   "plugin_api_version": "1.0",
