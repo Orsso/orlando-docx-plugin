@@ -30,13 +30,6 @@ DocxConversionLogic
 5. **Ready**: Available for document conversion
 6. **Deactivation**: Clean shutdown and resource cleanup
 
-## Data Flow
-
-```
-DOCX Input → DocxParser → StructureAnalyzer → StyleAnalyzer → DitaBuilder → DITA Output
-                                     ↓
-                            HeadingFilterPanel (UI feedback)
-```
 
 ## Extension Points
 
